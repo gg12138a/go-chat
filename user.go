@@ -58,6 +58,25 @@ func (this *User) Logout() {
 	this.server.Broadcast(this, "Logout")
 }
 
+// SendMsg send msg to `this`
+func (this *User) SendMsg(msg string) {
+	_, err := this.conn.Write([]byte(msg + "\n"))
+	if err != nil {
+		fmt.Println("Conn.Write err: ", err)
+	}
+}
+
 func (this *User) MsgHandle(msg string) {
-	this.server.Broadcast(this, msg)
+
+	if msg == "/cmd online-users" {
+		this.server.mapLock.RLock()
+		for _, u := range this.server.UserOnlineMap {
+			onlineMsg := fmt.Sprintf("[%s]%s : Online", u.Addr, u.Name)
+			this.SendMsg(onlineMsg)
+		}
+		this.server.mapLock.RUnlock()
+	} else {
+		this.server.Broadcast(this, msg)
+	}
+
 }
