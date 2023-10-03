@@ -51,14 +51,10 @@ func (this *Server) Broadcast(sendUser *User, msg string) {
 
 func (this *Server) Handler(conn net.Conn) {
 
-	user := newUser(conn)
+	user := newUser(conn, this)
 
 	// user login
-	this.mapLock.Lock()
-	this.UserOnlineMap[user.Name] = user
-	this.mapLock.Unlock()
-
-	this.Broadcast(user, "Login")
+	user.Login()
 
 	// read from user, then broadcast it
 	go func() {
@@ -67,7 +63,7 @@ func (this *Server) Handler(conn net.Conn) {
 			n, err := conn.Read(buf)
 			if n == 0 {
 				// conn closed by user
-				this.Broadcast(user, "Logout")
+				user.Logout()
 				return
 			}
 
@@ -78,7 +74,7 @@ func (this *Server) Handler(conn net.Conn) {
 
 			// strip '\n'
 			msg := string(buf[:n-1])
-			this.Broadcast(user, msg)
+			user.MsgHandle(msg)
 		}
 	}()
 }

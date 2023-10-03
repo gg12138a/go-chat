@@ -10,16 +10,20 @@ type User struct {
 	Addr string
 	// user will be listening for incoming messages on this channel.
 	ReadChan chan string
-	conn     net.Conn
+
+	// in server view
+	conn   net.Conn
+	server *Server
 }
 
-func newUser(conn net.Conn) *User {
+func newUser(conn net.Conn, server *Server) *User {
 	userAddr := conn.RemoteAddr().String()
 	user := &User{
 		Name:     userAddr,
 		Addr:     userAddr,
 		ReadChan: make(chan string),
 		conn:     conn,
+		server:   server,
 	}
 
 	go user.ListenComingMessage()
@@ -36,4 +40,24 @@ func (this *User) ListenComingMessage() {
 			fmt.Println("Conn.Write err: ", err)
 		}
 	}
+}
+
+func (this *User) Login() {
+	this.server.mapLock.Lock()
+	this.server.UserOnlineMap[this.Name] = this
+	this.server.mapLock.Unlock()
+
+	this.server.Broadcast(this, "Login")
+}
+
+func (this *User) Logout() {
+	this.server.mapLock.Lock()
+	delete(this.server.UserOnlineMap, this.Name)
+	this.server.mapLock.Unlock()
+
+	this.server.Broadcast(this, "Logout")
+}
+
+func (this *User) MsgHandle(msg string) {
+	this.server.Broadcast(this, msg)
 }
