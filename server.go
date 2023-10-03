@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"net"
 	"sync"
 )
@@ -59,6 +60,27 @@ func (this *Server) Handler(conn net.Conn) {
 
 	this.Broadcast(user, "Login")
 
+	// read from user, then broadcast it
+	go func() {
+		buf := make([]byte, 1024*4)
+		for {
+			n, err := conn.Read(buf)
+			if n == 0 {
+				// conn closed by user
+				this.Broadcast(user, "Logout")
+				return
+			}
+
+			if err != nil && err != io.EOF {
+				fmt.Println("conn.Read err: ", err)
+				return
+			}
+
+			// strip '\n'
+			msg := string(buf[:n-1])
+			this.Broadcast(user, msg)
+		}
+	}()
 }
 
 func (this *Server) Start() {
